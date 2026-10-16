@@ -32,7 +32,7 @@ hontoanki
 
 ### Pre-built binary
 
-Download the latest release for your platform from the [Releases](https://github.com/shaqu/hontoanki/releases) page.
+Download the latest release for your platform from the [Releases](https://github.com/souzanshaquille/HonToAnki/releases) page.
 
 | Platform | Installer | Portable |
 |----------|-----------|----------|

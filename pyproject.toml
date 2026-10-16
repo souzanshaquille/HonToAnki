@@ -35,9 +35,9 @@ dev = [
 hontoanki = "hontoanki.app:main"
 
 [project.urls]
-Homepage = "https://github.com/shaqu/hontoanki"
-Repository = "https://github.com/shaqu/hontoanki"
-Issues = "https://github.com/shaqu/hontoanki/issues"
+Homepage = "https://github.com/souzanshaquille/HonToAnki"
+Repository = "https://github.com/souzanshaquille/HonToAnki"
+Issues = "https://github.com/souzanshaquille/HonToAnki/issues"
 
 [tool.setuptools.packages.find]
 where = ["src"]
@@ -50,7 +50,7 @@ build-backend = "setuptools.build_meta"
 project_name = "HonToAnki"
 bundle = "com.hontoanki"
 version = "0.3.2"
-url = "https://github.com/shaqu/hontoanki"
+url = "https://github.com/souzanshaquille/HonToAnki"
 
 [tool.briefcase.app.hontoanki]
 console_app = true
