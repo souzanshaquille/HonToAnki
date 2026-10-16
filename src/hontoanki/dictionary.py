@@ -4,7 +4,8 @@ import time
 import zipfile
 from collections import defaultdict
 from pathlib import Path
-from urllib.request import urlopen, Request
+from urllib.error import HTTPError, URLError
+from urllib.request import Request, urlopen
 
 import orjson
 from rich.console import Console
@@ -26,27 +27,35 @@ USER_AGENT = "HonToAnki/0.2.0"
 CACHE_TTL = 3600  # 1 hour
 
 
-def find_dict_file(dict_dir: Path, lang: str = "eng"):
+def _dict_pattern(lang: str = "eng"):
     if lang == "eng":
-        pattern = "jmdict-examples-eng-*.json"
-    else:
-        pattern = f"jmdict-{lang}-*.json"
-    matches = list(dict_dir.glob(pattern))
-    return matches[0] if matches else None
+        return "jmdict-examples-eng-*.json"
+    return f"jmdict-{lang}-*.json"
+
+
+def find_dict_file(dict_dir: Path, lang: str = "eng"):
+    matches = sorted(dict_dir.glob(_dict_pattern(lang)), key=lambda p: p.name)
+    return matches[-1] if matches else None
 
 
 def _get_latest_tag():
     cache_path = get_data_dir() / "tag_cache.json"
 
     if cache_path.exists():
-        with open(cache_path) as f:
-            cached = json.load(f)
-        if time.time() - cached["timestamp"] < CACHE_TTL:
-            return cached["tag"]
+        try:
+            with open(cache_path) as f:
+                cached = json.load(f)
+            if time.time() - cached["timestamp"] < CACHE_TTL:
+                return cached["tag"]
+        except (OSError, ValueError, KeyError):
+            pass
 
     req = Request(f"{GITHUB_RELEASES}/latest", headers={"User-Agent": USER_AGENT}, method="HEAD")
-    with urlopen(req) as resp:
-        final_url = resp.url
+    try:
+        with urlopen(req, timeout=15) as resp:
+            final_url = resp.url
+    except (URLError, HTTPError, TimeoutError) as e:
+        raise RuntimeError(f"Could not check latest dictionary version: {e}") from e
 
     m = re.search(r"/tag/([^/]+)$", final_url)
     if not m:
@@ -75,20 +84,25 @@ def _download_asset(url: str, dest_dir: Path, display_name: str):
     console.print(f"Downloading [cyan]{display_name}[/cyan]...")
 
     req = Request(url, headers={"User-Agent": USER_AGENT})
-    with urlopen(req) as resp:
-        total = int(resp.headers.get("Content-Length", 0))
-        with Progress(
-            TextColumn("[green]Downloading dictionary..."),
-            BarColumn(),
-            DownloadColumn(),
-            TransferSpeedColumn(),
-            TimeRemainingColumn(),
-        ) as progress:
-            task = progress.add_task("download", total=total)
-            with open(zip_path, "wb") as f:
-                while chunk := resp.read(8192):
-                    f.write(chunk)
-                    progress.update(task, advance=len(chunk))
+    try:
+        with urlopen(req, timeout=30) as resp:
+            total = int(resp.headers.get("Content-Length", 0))
+            with Progress(
+                TextColumn("[green]Downloading dictionary..."),
+                BarColumn(),
+                DownloadColumn(),
+                TransferSpeedColumn(),
+                TimeRemainingColumn(),
+            ) as progress:
+                task = progress.add_task("download", total=total)
+                with open(zip_path, "wb") as f:
+                    while chunk := resp.read(8192):
+                        f.write(chunk)
+                        progress.update(task, advance=len(chunk))
+    except (URLError, HTTPError, TimeoutError) as e:
+        if zip_path.exists():
+            zip_path.unlink()
+        raise RuntimeError(f"Dictionary download failed: {e}") from e
 
     console.print("[green]Extracting...[/green]")
     with zipfile.ZipFile(zip_path, "r") as zf:
@@ -108,6 +122,10 @@ def download_dictionary(dict_dir: Path, lang: str = "eng"):
     found = find_dict_file(dict_dir, lang)
     if not found:
         raise RuntimeError(f"Extracted dictionary not found in {dict_dir}")
+
+    for old in sorted(dict_dir.glob(_dict_pattern(lang)), key=lambda p: p.name)[:-1]:
+        if old != found:
+            old.unlink()
 
     console.print(f"[green]Dictionary saved to {found}[/green]")
     return found

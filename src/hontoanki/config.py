@@ -41,8 +41,11 @@ def _ensure_config():
 
 def _read_config():
     _ensure_config()
-    with open(_CONFIG_PATH) as f:
-        return json.load(f)
+    try:
+        with open(_CONFIG_PATH) as f:
+            return json.load(f)
+    except (OSError, ValueError):
+        return dict(_DEFAULT_CONFIG)
 
 
 def _write_config(config):
@@ -53,10 +56,13 @@ def _write_config(config):
 
 def get_default_lang():
     cfg = _read_config()
-    return cfg.get("default_lang", "eng")
+    lang = cfg.get("default_lang", "eng")
+    return lang if lang in LANGUAGES else "eng"
 
 
 def set_default_lang(lang):
+    if lang not in LANGUAGES:
+        raise ValueError(f"Unknown language code: {lang}")
     cfg = _read_config()
     cfg["default_lang"] = lang
     _write_config(cfg)

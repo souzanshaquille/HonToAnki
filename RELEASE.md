@@ -20,7 +20,7 @@ Thats it. The workflow at `.github/workflows/release.yml`:
 
 1. Extracts the version from the tag (strips the `v` prefix)
 2. Injects it into `pyproject.toml` before building
-3. Builds Windows MSI+ZIP, macOS PKG+ZIP, and Linux AppImage+deb+rpm in parallel
+3. Builds Windows MSI+ZIP, macOS PKG, and Linux deb+rpm in parallel
 4. Creates a GitHub Release with auto-generated notes and attaches all artifacts
 
 ## What gets published
@@ -28,8 +28,8 @@ Thats it. The workflow at `.github/workflows/release.yml`:
 | Platform | Files |
 |----------|-------|
 | Windows | `HonToAnki-{version}.msi`, `HonToAnki-{version}.zip` |
-| macOS | `HonToAnki-{version}.pkg`, `HonToAnki-{version}.zip` |
-| Linux | `HonToAnki-{version}.AppImage`, `{version}.deb`, `{version}.rpm` |
+| macOS | `HonToAnki-{version}.pkg` |
+| Linux | `{version}.deb`, `{version}.rpm` |
 
 ## Notes
 

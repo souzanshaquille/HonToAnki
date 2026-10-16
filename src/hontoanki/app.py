@@ -1,5 +1,6 @@
 import argparse
 import os
+import re
 import subprocess
 import sys
 from collections import Counter
@@ -19,7 +20,12 @@ from .dictionary import load_dictionary
 from .epub_utils import get_book_data, is_japanese
 
 console = Console()
-EXPORTS_DIR = Path(__file__).parent.parent.parent / "exports"
+EXPORTS_DIR = Path.cwd() / "exports"
+
+
+def _safe_filename(name: str, limit: int = 100) -> str:
+    safe = re.sub(r'[\\/:*?"<>|]', "_", name).strip()
+    return (safe[:limit].rstrip() or "book")
 
 
 def _parse_args(argv=None):
@@ -31,6 +37,7 @@ def _parse_args(argv=None):
     parser.add_argument("--particles", "-p", action="store_true", help="Include particles/grammar")
     parser.add_argument("--output", "-o", metavar="DIR", help="Output directory (default: ./exports)")
     parser.add_argument("--json", "-j", action="store_true", help="Also export vocabulary as JSON")
+    parser.add_argument("--tts", action="store_true", help="Add text-to-speech audio (AnkiDroid/AnkiMobile)")
     parser.add_argument("--lang", "-l", metavar="CODE", choices=list(LANGUAGES.keys()),
                         help="Dictionary language code (one-time override)")
     parser.add_argument("--download-lang", "--dl", metavar="CODE", choices=list(LANGUAGES.keys()),
@@ -42,7 +49,30 @@ def _parse_args(argv=None):
 
 
 def pause():
-    input("\nPress Enter to exit...")
+    try:
+        input("\nPress Enter to exit...")
+    except (KeyboardInterrupt, EOFError):
+        pass
+
+
+def _prompt_lang(default_lang):
+    codes = ", ".join(LANGUAGES.keys())
+    console.print(f"Using [bold]{LANGUAGES[default_lang]}[/bold] ({default_lang}) — Enter to keep, or pick: {codes}")
+    return Prompt.ask("Enter language code", default=default_lang, choices=list(LANGUAGES.keys()))
+
+
+def _prompt_epub_path() -> Path:
+    while True:
+        raw = Prompt.ask("\n[bold yellow]Paste .epub Book Path[/bold yellow]").strip().strip('"')
+        epub_path = Path(raw)
+        if not raw:
+            console.print("[bold red]Please paste a path to an .epub file.[/bold red]")
+        elif not epub_path.exists() or not epub_path.is_file():
+            console.print(f"[bold red]File not found:[/bold red] {epub_path}")
+        elif epub_path.suffix.lower() != ".epub":
+            console.print(f"[bold red]Not an .epub file:[/bold red] {epub_path}")
+        else:
+            return epub_path
 
 
 def _exit_or_pause(args, msg, code=1):
@@ -50,6 +80,7 @@ def _exit_or_pause(args, msg, code=1):
     if args.epub:
         sys.exit(code)
     pause()
+    sys.exit(code)
 
 
 def is_wanted_pos(node, include_particles):
@@ -179,6 +210,14 @@ def _show_summary(apkg_path, vocab_data, decks, has_json):
 
 
 def main():
+    try:
+        _main()
+    except (KeyboardInterrupt, EOFError):
+        console.print("\n[yellow]Cancelled.[/yellow]")
+        sys.exit(1)
+
+
+def _main():
     args = _parse_args()
     console.print(Panel.fit("[bold blue]Epub to Anki (Chapter Mode)[/bold blue]"))
 
@@ -202,11 +241,7 @@ def main():
     lang = args.lang or default_lang
 
     if not args.epub:
-        console.print("\n[bold yellow]Dictionary language:[/bold yellow]")
-        for code, name in LANGUAGES.items():
-            mark = " [bold](default)[/bold]" if code == default_lang else ""
-            console.print(f"  [cyan]{code}[/cyan] - {name}{mark}")
-        lang = Prompt.ask("Enter language code", default=default_lang)
+        lang = _prompt_lang(default_lang)
 
     lang_name = LANGUAGES.get(lang, lang.upper())
     console.print(f"Dictionary: [bold]{lang_name}[/bold] ({lang})")
@@ -216,16 +251,13 @@ def main():
     try:
         dict_index = load_dictionary(lang)
     except RuntimeError as e:
-        console.print(f"[bold red]Error:[/bold red] {e}")
-        pause()
-        return
+        _exit_or_pause(args, f"[bold red]Error:[/bold red] {e}")
 
     if args.epub:
         epub_path = Path(args.epub)
         include_particles = args.particles
     else:
-        epub_input = Prompt.ask("\n[bold yellow]Paste .epub Book Path[/bold yellow]").strip('"')
-        epub_path = Path(epub_input)
+        epub_path = _prompt_epub_path()
         include_particles = Confirm.ask("Include particles/grammar?", default=False)
 
     if not epub_path.exists():
@@ -242,7 +274,7 @@ def main():
         _exit_or_pause(args, "[bold red]No Japanese content found in this EPUB![/bold red]")
         return
 
-    model = create_model()
+    model = create_model(with_tts=args.tts)
     vocab_data, decks = _process_chapters(tagger, chapters, model, dict_index, book_title, include_particles, lang)
 
     if not decks:
@@ -251,7 +283,7 @@ def main():
 
     output_dir = Path(args.output) if args.output else EXPORTS_DIR
     output_dir.mkdir(parents=True, exist_ok=True)
-    out_path = output_dir / f"{book_title}_Vocab.apkg"
+    out_path = output_dir / f"{_safe_filename(book_title)}_Vocab.apkg"
 
     genanki.Package(decks).write_to_file(out_path)
 

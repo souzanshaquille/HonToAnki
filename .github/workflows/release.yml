@@ -5,6 +5,10 @@ on:
     tags:
       - 'v*'
 
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   set-version:
     runs-on: ubuntu-latest
@@ -23,7 +27,7 @@ jobs:
         with:
           python-version: '3.11'
           cache: pip
-      - run: pip install briefcase
+      - run: pip install "briefcase>=0.4.2"
       - name: Build unidic-lite wheel (no wheel on PyPI)
         shell: bash
         run: |
@@ -32,7 +36,7 @@ jobs:
       - name: Inject version from tag
         shell: bash
         run: sed -i "s/^version = .*/version = \"${{ needs.set-version.outputs.version }}\"/" pyproject.toml
-      - run: python build.py windows
+      - run: python build_apps.py windows
       - uses: actions/upload-artifact@v4
         with:
           name: windows
@@ -48,14 +52,14 @@ jobs:
         with:
           python-version: '3.11'
           cache: pip
-      - run: pip install briefcase
+      - run: pip install "briefcase>=0.4.2"
       - name: Build unidic-lite wheel (no arm64 wheel on PyPI)
         run: |
           mkdir -p wheels
           pip wheel unidic-lite -w wheels/ --no-deps
       - name: Inject version from tag
         run: sed -i "" "s/^version = .*/version = \"${{ needs.set-version.outputs.version }}\"/" pyproject.toml
-      - run: python build.py macos
+      - run: python build_apps.py macos
       - uses: actions/upload-artifact@v4
         with:
           name: macos
@@ -71,7 +75,7 @@ jobs:
         run: |
           mkdir -p wheels
           pip3 wheel unidic-lite -w wheels/ --no-deps
-      - run: pip3 install briefcase
+      - run: pip3 install "briefcase>=0.4.2"
       - name: Inject version from tag
         run: sed -i "s/^version = .*/version = \"${{ needs.set-version.outputs.version }}\"/" pyproject.toml
       - name: Configure RPM dist tag for Ubuntu
@@ -86,7 +90,7 @@ jobs:
           echo "=== RPM dist macro ==="
           rpm --eval '%{?dist}'
       - name: Build Linux packages
-        run: python3 build.py linux
+        run: python3 build_apps.py linux
       - uses: actions/upload-artifact@v4
         with:
           name: linux
@@ -109,3 +113,39 @@ jobs:
             macos/*.pkg
             linux/*.deb
             linux/*.rpm
+
+  testpypi:
+    needs: set-version
+    runs-on: ubuntu-latest
+    environment: testpypi
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install build
+      - name: Inject version from tag
+        run: sed -i "s/^version = .*/version = \"${{ needs.set-version.outputs.version }}\"/" pyproject.toml
+      - run: python -m build
+      - uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          repository-url: https://test.pypi.org/legacy/
+
+  pypi:
+    needs: [set-version, testpypi]
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install build
+      - name: Inject version from tag
+        run: sed -i "s/^version = .*/version = \"${{ needs.set-version.outputs.version }}\"/" pyproject.toml
+      - run: python -m build
+      - uses: pypa/gh-action-pypi-publish@release/v1

@@ -14,6 +14,22 @@ Convert Japanese EPUB books into Anki flashcard decks. Extracts vocabulary chapt
 
 ## Quick Start
 
+### From PyPI (recommended)
+
+Requires Python 3.11+:
+
+```bash
+pip install hontoanki
+hontoanki --epub book.epub
+```
+
+Or isolated via [pipx](https://pipx.pypa.io/):
+
+```bash
+pipx install hontoanki
+hontoanki
+```
+
 ### Pre-built binary
 
 Download the latest release for your platform from the [Releases](https://github.com/shaqu/hontoanki/releases) page.
@@ -21,8 +37,8 @@ Download the latest release for your platform from the [Releases](https://github
 | Platform | Installer | Portable |
 |----------|-----------|----------|
 | Windows | HonToAnki.msi (adds to PATH) | HonToAnki.zip (unzip and run) |
-| macOS | HonToAnki.pkg (adds to PATH) | HonToAnki.zip (unzip and run) |
-| Linux | .deb / .rpm | HonToAnki.AppImage |
+| macOS | HonToAnki.pkg (adds to PATH) | — |
+| Linux | .deb / .rpm | — |
 
 Run `hontoanki` from your terminal. On first run, the JMdict dictionary downloads automatically (~120 MB for English).
 
@@ -72,6 +88,7 @@ Options:
 | `-p, --particles` | Include particles and grammar words |
 | `-o, --output DIR` | Output directory (default: ./exports) |
 | `-j, --json` | Also export vocabulary as JSON |
+| `--tts` | Add text-to-speech audio (AnkiDroid/AnkiMobile) |
 | `--download-lang, --dl CODE` | Download dictionary for a language and exit |
 | `--set-default-lang CODE` | Persist default language for future runs |
 | `-v, --verbose` | Show detailed parsing info |
@@ -100,16 +117,16 @@ Dictionaries are stored in the platform data directory:
 # Install Briefcase
 pip install briefcase
 
-# Build all platforms
-python build.py all
+# Build for the current OS (all platforms are built in CI via per-OS runners)
+python build_apps.py all
 
-# Build portable ZIP for current platform
-python build.py portable
+# Portable ZIP (Windows only)
+python build_apps.py portable
 
 # Build for a specific platform
-python build.py windows
-python build.py macos
-python build.py linux
+python build_apps.py windows
+python build_apps.py macos
+python build_apps.py linux
 ```
 
 ## Card Format
@@ -121,11 +138,15 @@ Each Anki card displays:
 
 ## Troubleshooting
 
-**Dictionary download fails** -- Check your internet connection. The GitHub release redirect endpoint has generous rate limits, but the API fallback is restricted to 60 requests per hour for unauthenticated users.
+**macOS says the app is from an unidentified developer** -- The PKG is adhoc-signed, not notarized by Apple. Right-click (Ctrl-click) the installer → Open → Open. You only need to do this once.
+
+**Windows SmartScreen blocks the installer** -- The MSI is unsigned. Click "More info" → "Run anyway". You only need to do this once per version.
+
+**Dictionary download fails** -- Check your internet connection. The dictionary is fetched via a GitHub release redirect, which needs network access to github.com.
 
 **No Japanese content found** -- Ensure the EPUB contains Japanese text. Some EPUBs use image-based content that cannot be parsed. Try a different EPUB file.
 
-**Build errors** -- Ensure Briefcase 0.4.2+ is installed. Windows builds require WiX Toolset; macOS builds require Xcode.
+**Build errors** -- Requires Briefcase 0.4.2+ (CI installs the latest). Windows builds require WiX Toolset; macOS builds require Xcode.
 
 ## License
 

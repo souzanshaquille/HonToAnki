@@ -43,7 +43,8 @@ def extract_data(entry, lang: str = "eng") -> WordEntry:
                 )
                 if jp_sent and translated_sent:
                     example_html = (
-                        f"{jp_sent}<br><small style='color: #666;'>{translated_sent}</small>"
+                        f'<span lang="ja">{jp_sent}</span>'
+                        f'<br><small class="example-translation">{translated_sent}</small>'
                     )
                     break
         if example_html:
@@ -52,7 +53,10 @@ def extract_data(entry, lang: str = "eng") -> WordEntry:
     return WordEntry(reading, gloss, example_html)
 
 
-def create_model():
+def create_model(with_tts: bool = False):
+    qfmt = '<div class="jp-word" lang="ja">{{Word}}</div>'
+    if with_tts:
+        qfmt += "{{tts ja_JP:Word}}"
     return genanki.Model(
         stable_id("jp_vocab_model_v3_styled"),
         "JP Vocab (Modern)",
@@ -67,10 +71,10 @@ def create_model():
         templates=[
             {
                 "name": "Recognition",
-                "qfmt": """<div class="jp-word">{{Word}}</div>""",
+                "qfmt": qfmt,
                 "afmt": """
-            <div class="jp-word">{{Word}}</div>
-            <div class="jp-reading">{{Reading}}</div>
+            <div class="jp-word" lang="ja">{{Word}}</div>
+            <div class="jp-reading" lang="ja">{{Reading}}</div>
             <hr class="separator">
             <div class="section-label">Meaning</div>
             <div class="meaning-box">{{Meaning}}</div>

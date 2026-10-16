@@ -1,11 +1,20 @@
 [project]
 name = "hontoanki"
-version = "0.3.1"
+version = "0.3.2"
 description = "Convert Japanese EPUB books to Anki decks"
 readme = "README.md"
 license = "MIT"
 license-files = ["LICENSE"]
 requires-python = ">=3.11"
+authors = [{name = "souzanshaquille", email = "shaquillesouzan3@gmail.com"}]
+keywords = ["japanese", "anki", "epub", "vocabulary", "jmdict", "flashcards"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Operating System :: OS Independent",
+    "Topic :: Education",
+    "Topic :: Text Processing :: Linguistic",
+]
 dependencies = [
     "beautifulsoup4>=4.14.3",
     "ebooklib>=0.20",
@@ -19,23 +28,28 @@ dependencies = [
 [project.optional-dependencies]
 dev = [
     "pytest>=7.0.0",
-    "briefcase>=0.3.0",
+    "briefcase>=0.4.2",
 ]
 
 [project.scripts]
 hontoanki = "hontoanki.app:main"
 
+[project.urls]
+Homepage = "https://github.com/shaqu/hontoanki"
+Repository = "https://github.com/shaqu/hontoanki"
+Issues = "https://github.com/shaqu/hontoanki/issues"
+
 [tool.setuptools.packages.find]
 where = ["src"]
 
 [build-system]
-requires = ["setuptools>=61.0"]
+requires = ["setuptools>=77.0"]
 build-backend = "setuptools.build_meta"
 
 [tool.briefcase]
 project_name = "HonToAnki"
 bundle = "com.hontoanki"
-version = "0.3.1"
+version = "0.3.2"
 url = "https://github.com/shaqu/hontoanki"
 
 [tool.briefcase.app.hontoanki]

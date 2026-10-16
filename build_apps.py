@@ -1,14 +1,15 @@
 #!/usr/bin/env python3
 """
-Build script for HonToAnki.
+Build script for HonToAnki (Briefcase native apps).
 
 Usage:
-    python build.py all          # Build all platforms
-    python build.py windows      # Windows MSI + ZIP
-    python build.py macos        # macOS PKG
-    python build.py linux        # Linux deb + rpm
-    python build.py portable     # Portable ZIPs for current platform
+    python build_apps.py all          # Build for the current OS (CI covers all OSes)
+    python build_apps.py windows      # Windows MSI + ZIP
+    python build_apps.py macos        # macOS PKG
+    python build_apps.py linux        # Linux deb + rpm
+    python build_apps.py portable     # Portable ZIP (Windows only)
 """
+import platform as _platform
 import subprocess
 import sys
 
@@ -51,23 +52,30 @@ PLATFORM_BUILD = {
 }
 
 
+def _host_platform():
+    system = _platform.system()
+    if system == "Windows":
+        return "windows"
+    if system == "Darwin":
+        return "macos"
+    return "linux"
+
+
 def main():
     args = [a.lower() for a in sys.argv[1:]]
     if not args or "all" in args:
-        for plat in ["windows", "macos", "linux"]:
-            pkg_args, fmt = PLATFORM_BUILD[plat]
-            build_platform(plat, pkg_args, fmt)
+        host = _host_platform()
+        print(f"Building for current OS ({host}). All platforms are built in CI via per-OS runners.")
+        pkg_args, fmt = PLATFORM_BUILD[host]
+        build_platform(host, pkg_args, fmt)
         return
 
     if "portable" in args:
-        import platform
-        system = platform.system()
-        if system == "Windows":
-            build_platform("windows", [["-p", "zip"]])
-        elif system == "Darwin":
-            build_platform("macos", [["-p", "pkg", "--adhoc-sign"]])
-        else:
-            build_platform("linux", [["-p", "rpm"], ["-p", "deb"]], fmt="system")
+        if _host_platform() != "windows":
+            print("No portable artifact outside Windows (macOS ships PKG, Linux ships deb/rpm).")
+            print("Use 'macos' or 'linux' to build the installer for this OS.")
+            sys.exit(1)
+        build_platform("windows", [["-p", "zip"]])
         return
 
     for a in args:
